@@ -6,7 +6,7 @@ module Agents
     default_schedule 'every_1h'
 
     description <<-MD
-      The Switchbot Agent interacts with Switchbot API and can create events / tasks if wanted / needed.
+      The Bitfinex Agent interacts with the Bitfinex API and can create events / tasks if wanted / needed.
 
       The `type` can be like checking the wallet's balance, alerts.
 
@@ -78,7 +78,6 @@ module Agents
     def working?
       event_created_within?(options['expected_receive_period_in_days']) && !recent_error_logs?
     end
-
 
     def check
       trigger_action
