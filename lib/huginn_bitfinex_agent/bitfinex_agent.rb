@@ -38,6 +38,7 @@ module Agents
       {
         'type' => '',
         'apikey' => '',
+        'ticker' => 'tCLOUSD',
         'secretkey' => '',
         'debug' => 'false',
         'expected_receive_period_in_days' => '2',
@@ -48,11 +49,16 @@ module Agents
     form_configurable :debug, type: :boolean
     form_configurable :apikey, type: :string
     form_configurable :secretkey, type: :string
+    form_configurable :ticker, type: :string
     form_configurable :expected_receive_period_in_days, type: :string
     form_configurable :changes_only, type: :boolean
-    form_configurable :type, type: :array, values: ['get_balances', 'alerts_list']
+    form_configurable :type, type: :array, values: ['get_balances', 'alerts_list' , 'ticker']
     def validate_options
-      errors.add(:base, "type has invalid value: should be 'get_balances' 'alerts_list'") if interpolated['type'].present? && !%w(get_balances alerts_list).include?(interpolated['type'])
+      errors.add(:base, "type has invalid value: should be 'get_balances' 'alerts_list' 'ticker'") if interpolated['type'].present? && !%w(get_balances alerts_list ticker).include?(interpolated['type'])
+
+      unless options['ticker'].present? || !['ticker'].include?(options['type'])
+        errors.add(:base, "ticker is a required field")
+      end
 
       unless options['apikey'].present? || !['get_balances', 'alerts_list'].include?(options['type'])
         errors.add(:base, "apikey is a required field")
@@ -102,6 +108,35 @@ module Agents
         log body
       end
 
+    end
+
+    def ticker(base_url)
+      url = URI("#{base_url}/v2/ticker/#{interpolated['ticker']}")
+
+      http = Net::HTTP.new(url.host, url.port)
+      http.use_ssl = true
+
+      request = Net::HTTP::Get.new(url)
+      request["accept"] = 'application/json'
+      response = http.request(request)
+
+      log_curl_output(response.code,response.body)
+      payload = JSON.parse(response.body)
+      if interpolated['changes_only'] == 'true'
+        if payload.to_s != memory['last_status']
+          create_event :payload => { 'symbol' => interpolated['ticker'], 'frr' => payload[0], 'bid' =>  payload[1], 'bid_period' =>  payload[2], 'bid_size' =>  payload[3], 'ask' =>  payload[4], 'ask_period' =>  payload[5], 'ask_size' =>  payload[6], 'daily_change'  => payload[7], 'daily_change_relative'  => payload[8], 'last_price' => payload[9], 'volume' => payload[10], 'high' => payload[11], 'low' => payload[12], 'frr_amount_available' => payload[13]}
+          memory['last_status'] = payload.to_s
+        else
+          if interpolated['debug'] == 'true'
+            log "equal"
+          end
+        end
+      else
+        create_event :payload => { 'symbol' => interpolated['ticker'], 'frr' => payload[0], 'bid' =>  payload[1], 'bid_period' =>  payload[2], 'bid_size' =>  payload[3], 'ask' =>  payload[4], 'ask_period' =>  payload[5], 'ask_size' =>  payload[6], 'daily_change'  => payload[7], 'daily_change_relative'  => payload[8], 'last_price' => payload[9], 'volume' => payload[10], 'high' => payload[11], 'low' => payload[12], 'frr_amount_available' => payload[13]}
+        if payload.to_s != memory['last_status']
+          memory['last_status'] = payload.to_s
+        end
+      end
     end
 
     def alerts_list(base_url)
@@ -216,12 +251,15 @@ module Agents
 
     def trigger_action()
 
-      base_url = 'https://api.bitfinex.com'
+      base_url_auth = 'https://api.bitfinex.com'
+      base_url_pub = 'https://api-pub.bitfinex.com'
       case interpolated['type']
       when "get_balances"
-        get_balances(base_url)
+        get_balances(base_url_auth)
       when "alerts_list"
-        alerts_list(base_url)
+        alerts_list(base_url_auth)
+      when "ticker"
+        ticker(base_url_pub)
       else
         log "Error: type has an invalid value (#{type})"
       end
