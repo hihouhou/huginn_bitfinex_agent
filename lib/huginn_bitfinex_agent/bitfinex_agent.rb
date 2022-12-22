@@ -225,7 +225,7 @@ module Agents
               create_event :payload => { 'wallet_type' => wallet_type, 'currency' => currency, 'balance' => balance,'unsettled_interest' => unsettled_interest, 'available_balance' => available_balance, 'last_change' => last_change, 'trade_details' => trade_details}
             end
           else
-            last_status = memory['last_status'].gsub("=>", ": ").gsub(": nil,", ": null,")
+            last_status = memory['last_status'].gsub("=>", ": ").gsub(", nil", ", null")
             last_status = JSON.parse(last_status)
             payload.each do | wallet_type, currency, balance, unsettled_interest, available_balance, last_change, trade_details|
               found = false
