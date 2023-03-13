@@ -123,9 +123,9 @@ module Agents
       log_curl_output(response.code,response.body)
       payload = JSON.parse(response.body)
       if interpolated['changes_only'] == 'true'
-        if payload.to_s != memory['last_status']
+        if payload != memory['last_status']
           create_event :payload => { 'symbol' => interpolated['ticker'], 'frr' => payload[0], 'bid' =>  payload[1], 'bid_period' =>  payload[2], 'bid_size' =>  payload[3], 'ask' =>  payload[4], 'ask_period' =>  payload[5], 'ask_size' =>  payload[6], 'daily_change'  => payload[7], 'daily_change_relative'  => payload[8], 'last_price' => payload[9], 'volume' => payload[10], 'high' => payload[11], 'low' => payload[12], 'frr_amount_available' => payload[13]}
-          memory['last_status'] = payload.to_s
+          memory['last_status'] = payload
         else
           if interpolated['debug'] == 'true'
             log "equal"
@@ -133,8 +133,8 @@ module Agents
         end
       else
         create_event :payload => { 'symbol' => interpolated['ticker'], 'frr' => payload[0], 'bid' =>  payload[1], 'bid_period' =>  payload[2], 'bid_size' =>  payload[3], 'ask' =>  payload[4], 'ask_period' =>  payload[5], 'ask_size' =>  payload[6], 'daily_change'  => payload[7], 'daily_change_relative'  => payload[8], 'last_price' => payload[9], 'volume' => payload[10], 'high' => payload[11], 'low' => payload[12], 'frr_amount_available' => payload[13]}
-        if payload.to_s != memory['last_status']
-          memory['last_status'] = payload.to_s
+        if payload != memory['last_status']
+          memory['last_status'] = payload
         end
       end
     end
@@ -163,36 +163,6 @@ module Agents
 
       log_curl_output(response.code,response.body)
       payload = JSON.parse(response.body)
-# IN PROGRESS
-#      if interpolated['changes_only'] == 'true'
-#        if payload.to_s != memory['last_status']
-#          if "#{memory['last_status']}" == ''
-#            payload.each do | wallet_type, currency, balance, unsettled_interest, available_balance, last_change, trade_details|
-#              create_event :payload => { 'wallet_type' => wallet_type, 'currency' => currency, 'balance' => balance,'unsettled_interest' => unsettled_interest, 'available_balance' => available_balance, 'last_change' => last_change, 'trade_details' => trade_details}
-#            end
-#          else
-#            last_status = memory['last_status'].gsub("=>", ": ").gsub(": nil,", ": null,")
-#            last_status = JSON.parse(last_status)
-#            payload.each do | wallet_type, currency, balance, unsettled_interest, available_balance, last_change, trade_details|
-#              found = false
-#              last_status.each do | wallet_typebis, currencybis, balancebis, unsettled_interestbis, available_balancebis, last_changebis, trade_detailsbis|
-#                if wallet_type == wallet_typebis && currency == currencybis && balance == balancebis
-#                    found = true
-#                end
-#              end
-#              if found == false
-#                  create_event :payload => { 'wallet_type' => wallet_type, 'currency' => currency, 'balance' => balance,'unsettled_interest' => unsettled_interest, 'available_balance' => available_balance, 'last_change' => last_change, 'trade_details' => trade_details}
-#              end
-#            end
-#          end
-#          memory['last_status'] = payload.to_s
-#        end
-#      else
-#        create_event payload: payload
-#        if payload.to_s != memory['last_status']
-#          memory['last_status'] = payload.to_s
-#        end
-#      end
     end
 
     def get_balances(base_url)
@@ -219,32 +189,41 @@ module Agents
       log_curl_output(response.code,response.body)
       payload = JSON.parse(response.body)
       if interpolated['changes_only'] == 'true'
-        if payload.to_s != memory['last_status']
+        if payload != memory['last_status']
           if "#{memory['last_status']}" == ''
             payload.each do | wallet_type, currency, balance, unsettled_interest, available_balance, last_change, trade_details|
               create_event :payload => { 'wallet_type' => wallet_type, 'currency' => currency, 'balance' => balance,'unsettled_interest' => unsettled_interest, 'available_balance' => available_balance, 'last_change' => last_change, 'trade_details' => trade_details}
             end
           else
-            last_status = memory['last_status'].gsub("=>", ": ").gsub(", nil", ", null")
-            last_status = JSON.parse(last_status)
+            last_status = memory['last_status']
             payload.each do | wallet_type, currency, balance, unsettled_interest, available_balance, last_change, trade_details|
               found = false
+              if interpolated['debug'] == 'true'
+                log "found is #{found}"
+              end
               last_status.each do | wallet_typebis, currencybis, balancebis, unsettled_interestbis, available_balancebis, last_changebis, trade_detailsbis|
                 if wallet_type == wallet_typebis && currency == currencybis && balance == balancebis
                     found = true
                 end
               end
+              if interpolated['debug'] == 'true'
+                log "found is #{found}"
+              end
               if found == false
                   create_event :payload => { 'wallet_type' => wallet_type, 'currency' => currency, 'balance' => balance,'unsettled_interest' => unsettled_interest, 'available_balance' => available_balance, 'last_change' => last_change, 'trade_details' => trade_details}
+              else
+                if interpolated['debug'] == 'true'
+                  log "no event because found is #{found}"
+                end
               end
             end
           end
-          memory['last_status'] = payload.to_s
+          memory['last_status'] = payload
         end
       else
         create_event payload: payload
-        if payload.to_s != memory['last_status']
-          memory['last_status'] = payload.to_s
+        if payload != memory['last_status']
+          memory['last_status'] = payload
         end
       end
     end
